@@ -3,37 +3,38 @@
 03_GOLD_STAR_SCHEMA.PY
 Projeto: CNPJ Data Lakehouse (Receita Federal do Brasil)
 Plataforma: Databricks / PySpark / Delta Lake
-Objetivo: Modelagem Dimensional (Star Schema / Kimball) e Criação de Datamarts Analíticos na Camada Gold.
+Objetivo: Modelagem Dimensional (Star Schema / Kimball) e Criacao de Datamarts Analiticos na Camada Gold.
 ================================================================================
 """
 
 # Databricks Notebook Source
 # COMMAND ----------
 # MAGIC %md
-# MAGIC # 🥇 03 - Modelagem Dimensional (Star Schema) e Datamarts na Camada Gold
+# MAGIC # 03 - Modelagem Dimensional (Star Schema) e Datamarts na Camada Gold
 # MAGIC 
 # MAGIC ### Arquitetura da Camada Gold:
 # MAGIC 
 # MAGIC ```
-# MAGIC             ┌─────────────────────────┐
-# MAGIC             │       dim_empresa       │
-# MAGIC             └────────────┬────────────┘
-# MAGIC                          │
-# MAGIC ┌─────────────────┐      │      ┌─────────────────────┐
-# MAGIC │    dim_cnae     ├──────┼──────┤   dim_localizacao   │
-# MAGIC └────────┬────────┘      │      └──────────┬──────────┘
-# MAGIC          │               │                 │
-# MAGIC          └───────────────┼─────────────────┘
-# MAGIC                          ▼
-# MAGIC             ┌─────────────────────────┐
-# MAGIC             │  fato_estabelecimentos  │
-# MAGIC             └─────────────────────────┘
-# MAGIC                          │
-# MAGIC          ┌───────────────┴───────────────┐
-# MAGIC          ▼                               ▼
-# MAGIC ┌─────────────────────────┐ ┌─────────────────────────┐
-# MAGIC │kpi_demografia_setorial  │ │kpi_sobrevivencia_cnae   │
-# MAGIC └─────────────────────────┘ └─────────────────────────┘
+# MAGIC             +-------------------------+
+# MAGIC             |       dim_empresa       |
+# MAGIC             +------------+------------+
+# MAGIC                          |
+# MAGIC +-----------------+      |      +---------------------+
+# MAGIC |    dim_cnae     +------+------+   dim_localizacao   |
+# MAGIC +--------+--------+      |      +----------+----------+
+# MAGIC          |               |                 |
+# MAGIC          +---------------+-----------------+
+# MAGIC                          |
+# MAGIC                          v
+# MAGIC             +-------------------------+
+# MAGIC             |  fato_estabelecimentos  |
+# MAGIC             +-------------------------+
+# MAGIC                          |
+# MAGIC          +---------------+---------------+
+# MAGIC          v                               v
+# MAGIC +-------------------------+ +-------------------------+
+# MAGIC |kpi_demografia_setorial  | |kpi_sobrevivencia_cnae   |
+# MAGIC +-------------------------+ +-------------------------+
 # MAGIC ```
 
 # COMMAND ----------
@@ -48,11 +49,11 @@ spark.sql("USE SCHEMA gold")
 
 # COMMAND ----------
 # MAGIC %md
-# MAGIC ## 📐 1. Criação das Dimensões (Kimball)
+# MAGIC ## 1. Criacao das Dimensoes (Kimball)
 
 # COMMAND ----------
-# 1.1 Dimensão Localização (UF, Município, Região Geográfica do Brasil)
-print("⏳ Construindo 'dim_localizacao'...")
+# 1.1 Dimensao Localizacao (UF, Municipio, Regiao Geografica do Brasil)
+print("[INFO] Construindo 'dim_localizacao'...")
 
 df_silver_est = spark.table("silver.silver_estabelecimentos")
 
@@ -67,17 +68,17 @@ df_dim_loc = (
         .when(col("uf").isin("MT", "MS", "GO", "DF"), "Centro-Oeste")
         .when(col("uf").isin("SP", "RJ", "MG", "ES"), "Sudeste")
         .when(col("uf").isin("PR", "SC", "RS"), "Sul")
-        .otherwise("Exterior / Não Identificado")
+        .otherwise("Exterior / Nao Identificado")
     )
     .withColumn("sk_localizacao", sha2(concat_ws("||", col("uf"), col("municipio_cod")), 256))
 )
 
 df_dim_loc.write.format("delta").mode("overwrite").saveAsTable("gold.dim_localizacao")
-print("✅ 'dim_localizacao' criada.")
+print("[INFO] 'dim_localizacao' criada com sucesso.")
 
 # COMMAND ----------
-# 1.2 Dimensão CNAE (Atividade Econômica e Grandes Setores)
-print("⏳ Construindo 'dim_cnae'...")
+# 1.2 Dimensao CNAE (Atividade Economica e Grandes Setores)
+print("[INFO] Construindo 'dim_cnae'...")
 
 df_bronze_cnae = spark.table("bronze.bronze_cnae")
 
@@ -85,27 +86,27 @@ df_dim_cnae = (
     df_bronze_cnae
     .withColumnRenamed("codigo", "codigo_cnae")
     .withColumnRenamed("descricao", "descricao_cnae")
-    # Derivação dos primeiros 2 dígitos para Divisão CNAE
+    # Derivacao dos primeiros 2 digitos para Divisao CNAE
     .withColumn("divisao_cnae", col("codigo_cnae").substr(1, 2))
     # Mapeamento de Macro-Setores
     .withColumn(
         "macro_setor",
-        when(col("divisao_cnae").cast("int").between(1, 3), "Agropecuária")
-        .when(col("divisao_cnae").cast("int").between(5, 39), "Indústria")
-        .when(col("divisao_cnae").cast("int").between(41, 43), "Construção")
-        .when(col("divisao_cnae").cast("int").between(45, 47), "Comércio")
-        .when(col("divisao_cnae").cast("int").between(49, 99), "Serviços")
+        when(col("divisao_cnae").cast("int").between(1, 3), "Agropecuaria")
+        .when(col("divisao_cnae").cast("int").between(5, 39), "Industria")
+        .when(col("divisao_cnae").cast("int").between(41, 43), "Construcao")
+        .when(col("divisao_cnae").cast("int").between(45, 47), "Comercio")
+        .when(col("divisao_cnae").cast("int").between(49, 99), "Servicos")
         .otherwise("Outros")
     )
     .withColumn("sk_cnae", sha2(col("codigo_cnae"), 256))
 )
 
 df_dim_cnae.write.format("delta").mode("overwrite").saveAsTable("gold.dim_cnae")
-print("✅ 'dim_cnae' criada.")
+print("[INFO] 'dim_cnae' criada com sucesso.")
 
 # COMMAND ----------
-# 1.3 Dimensão Empresa
-print("⏳ Construindo 'dim_empresa'...")
+# 1.3 Dimensao Empresa
+print("[INFO] Construindo 'dim_empresa'...")
 
 df_silver_emp = spark.table("silver.silver_empresas")
 
@@ -115,14 +116,14 @@ df_dim_emp = (
 )
 
 df_dim_emp.write.format("delta").mode("overwrite").saveAsTable("gold.dim_empresa")
-print("✅ 'dim_empresa' criada.")
+print("[INFO] 'dim_empresa' criada com sucesso.")
 
 # COMMAND ----------
 # MAGIC %md
-# MAGIC ## 📊 2. Criação da Tabela Fato: `fato_estabelecimentos`
+# MAGIC ## 2. Criacao da Tabela Fato: `fato_estabelecimentos`
 
 # COMMAND ----------
-print("⏳ Construindo 'fato_estabelecimentos'...")
+print("[INFO] Construindo 'fato_estabelecimentos'...")
 
 df_fato = (
     df_silver_est
@@ -130,7 +131,7 @@ df_fato = (
     .withColumn("sk_empresa", sha2(col("cnpj_basico"), 256))
     .withColumn("sk_cnae", sha2(col("cnae_fiscal_principal"), 256))
     .withColumn("sk_localizacao", sha2(concat_ws("||", col("uf"), col("municipio_cod")), 256))
-    # Flags e Métricas
+    # Flags e Metricas
     .withColumn("flg_ativo", when(col("situacao_cadastral") == "02", 1).otherwise(0))
     .withColumn("flg_matriz", when(col("tipo_unidade") == "MATRIZ", 1).otherwise(0))
     .withColumn("ano_inicio_atividade", year(col("data_inicio_atividade")))
@@ -171,15 +172,15 @@ df_fato = (
 )
 
 spark.sql("OPTIMIZE gold.fato_estabelecimentos ZORDER BY (ano_inicio_atividade, situacao_cadastral)")
-print("✅ 'fato_estabelecimentos' gravada e otimizada!")
+print("[INFO] 'fato_estabelecimentos' gravada e otimizada.")
 
 # COMMAND ----------
 # MAGIC %md
-# MAGIC ## 📈 3. Datamarts & KPIs Analíticos de Negócio
+# MAGIC ## 3. Datamarts & KPIs Analiticos de Negocio
 
 # COMMAND ----------
 # Datamart 1: Demografia de Empresas por Macro-Setor e UF
-print("⏳ Gerando 'kpi_demografia_setorial_uf'...")
+print("[INFO] Gerando 'kpi_demografia_setorial_uf'...")
 
 df_kpi_demografia = spark.sql("""
     SELECT 
@@ -203,11 +204,11 @@ df_kpi_demografia = spark.sql("""
 """)
 
 df_kpi_demografia.write.format("delta").mode("overwrite").saveAsTable("gold.kpi_demografia_setorial_uf")
-print("✅ 'kpi_demografia_setorial_uf' criada.")
+print("[INFO] 'kpi_demografia_setorial_uf' criada com sucesso.")
 
 # COMMAND ----------
-# Datamart 2: Tempo Médio de Sobrevivência por Porte e CNAE
-print("⏳ Gerando 'kpi_taxa_sobrevivencia_porte_cnae'...")
+# Datamart 2: Tempo Medio de Sobrevivencia por Porte e CNAE
+print("[INFO] Gerando 'kpi_taxa_sobrevivencia_porte_cnae'...")
 
 df_kpi_sobrevivencia = spark.sql("""
     SELECT 
@@ -229,4 +230,4 @@ df_kpi_sobrevivencia = spark.sql("""
 """)
 
 df_kpi_sobrevivencia.write.format("delta").mode("overwrite").saveAsTable("gold.kpi_taxa_sobrevivencia_porte_cnae")
-print("✅ 'kpi_taxa_sobrevivencia_porte_cnae' criada.")
+print("[INFO] 'kpi_taxa_sobrevivencia_porte_cnae' criada com sucesso.")

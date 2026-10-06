@@ -2,15 +2,15 @@
 -- 04_BUSINESS_ANALYTICS_KPIS.SQL
 -- Projeto: CNPJ Data Lakehouse (Receita Federal do Brasil)
 -- Plataforma: Databricks SQL / Analytics Engine
--- Objetivo: Consultas de inteligência de mercado, demografia empresarial e benchmarking.
+-- Objetivo: Consultas de inteligencia de mercado, demografia empresarial e benchmarking.
 -- ================================================================================
 
 USE CATALOG cnpj_lakehouse;
 USE SCHEMA gold;
 
 -- ================================================================================
--- 📊 QUERY 1: Top 10 CNAEs com Maior Volume de Abertura de Empresas Pós-2020
--- Identifica os setores da economia que mais abriram novos negócios no Brasil recentemente.
+-- QUERY 1: Top 10 CNAEs com Maior Volume de Abertura de Empresas Pos-2020
+-- Identifica os setores da economia que mais abriram novos negocios no Brasil recentemente.
 -- ================================================================================
 SELECT 
     c.codigo_cnae,
@@ -28,8 +28,8 @@ LIMIT 10;
 
 
 -- ================================================================================
--- 🗺️ QUERY 2: Ranking de Estados (UF) por Densidade e Taxa de Atividade de Empresas
--- Avalia quais estados têm maior percentual de empresas ativas vs encerradas/baixadas.
+-- QUERY 2: Ranking de Estados (UF) por Densidade e Taxa de Atividade de Empresas
+-- Avalia quais estados tem maior percentual de empresas ativas vs encerradas/baixadas.
 -- ================================================================================
 SELECT 
     l.regiao_brasil,
@@ -45,8 +45,8 @@ ORDER BY percentual_empresas_ativas DESC;
 
 
 -- ================================================================================
--- 💰 QUERY 3: Concentração de Capital Social por Macro-Setor e Porte
--- Analisa onde está concentrado o capital investido formalmente no Brasil.
+-- QUERY 3: Concentracao de Capital Social por Macro-Setor e Porte
+-- Analisa onde esta concentrado o capital investido formalmente no Brasil.
 -- ================================================================================
 SELECT 
     c.macro_setor,
@@ -63,8 +63,8 @@ ORDER BY capital_social_total_bilhoes_brl DESC;
 
 
 -- ================================================================================
--- ⏱️ QUERY 4: Sobrevivência de PMEs (Micro e Pequeno Porte) por Setor
--- Compara quanto tempo em média dura uma microempresa antes de ser baixada/inativada.
+-- QUERY 4: Sobrevivencia de PMEs (Micro e Pequeno Porte) por Setor
+-- Compara quanto tempo em media dura uma microempresa antes de ser baixada/inativada.
 -- ================================================================================
 SELECT 
     c.macro_setor,
@@ -81,11 +81,11 @@ ORDER BY media_anos_sobrevivencia ASC;
 
 
 -- ================================================================================
--- ⏳ QUERY 5: Demonstração de Delta Lake Time Travel & Histórico de Auditoria
--- Permite consultar o histórico de versões e alterações da tabela Delta.
+-- QUERY 5: Demonstracao de Delta Lake Time Travel & Historico de Auditoria
+-- Permite consultar o historico de versoes e alteracoes da tabela Delta.
 -- ================================================================================
--- 5.1 Ver histórico de versões da tabela Delta
+-- 5.1 Ver historico de versoes da tabela Delta
 DESCRIBE HISTORY silver.silver_estabelecimentos;
 
--- 5.2 Consultar uma versão específica no tempo (Exemplo: Versão 0)
+-- 5.2 Consultar uma versao especifica no tempo (Exemplo: Versao 0)
 -- SELECT COUNT(*) FROM silver.silver_estabelecimentos VERSION AS OF 0;

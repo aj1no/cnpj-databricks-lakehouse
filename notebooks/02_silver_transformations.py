@@ -3,23 +3,23 @@
 02_SILVER_TRANSFORMATIONS.PY
 Projeto: CNPJ Data Lakehouse (Receita Federal do Brasil)
 Plataforma: Databricks / PySpark / Delta Lake
-Objetivo: Limpeza profunda, padronização, tipagem, enriquecimento e deduplicação na camada Silver.
+Objetivo: Limpeza profunda, padronizacao, tipagem, enriquecimento e deduplicacao na camada Silver.
 ================================================================================
 """
 
 # Databricks Notebook Source
 # COMMAND ----------
 # MAGIC %md
-# MAGIC # 🥈 02 - Transformação e Qualidade na Camada Silver
+# MAGIC # 02 - Transformacao e Qualidade na Camada Silver
 # MAGIC 
-# MAGIC ### Desafios e Técnicas Aplicadas:
-# MAGIC 1. **Data Cleaning & Typing**: Conversão de strings de data (`AAAAMMDD` -> `DateType`), capital social com vírgula para `Decimal(16,2)` e formatação de CNPJ de 14 dígitos.
-# MAGIC 2. **Broadcast Joins de Alta Performance**: Enriquecimento de tabelas de dezenas de milhões de linhas com tabelas dimensionais de domínio em memória sem shuffle.
-# MAGIC 3. **Decodificação de Regras de Negócio**: Tradução de códigos oficiais da RFB (Porte, Matriz/Filial, Situação Cadastral, Faixa Etária).
-# MAGIC 4. **Idempotência com Delta Lake `MERGE INTO`**: Upsert seguro para suportar re-processamento sem duplicar dados.
-# MAGIC 5. **Otimização Delta (`OPTIMIZE` e `Z-ORDER`)**: Indexação multidimensional para acelerar consultas analíticas.
-# MAGIC 
-# MAGIC # COMMAND ----------
+# MAGIC ### Desafios e Tecnicas Aplicadas:
+# MAGIC 1. Data Cleaning & Typing: Conversao de strings de data (`AAAAMMDD` -> `DateType`), capital social com virgula para `Decimal(16,2)` e formatacao de CNPJ de 14 digitos.
+# MAGIC 2. Broadcast Joins de Alta Performance: Enriquecimento de tabelas de dezenas de milhoes de linhas com tabelas dimensionais de dominio em memoria sem shuffle.
+# MAGIC 3. Decodificacao de Regras de Negocio: Traducao de codigos oficiais da RFB (Porte, Matriz/Filial, Situacao Cadastral, Faixa Etaria).
+# MAGIC 4. Idempotencia com Delta Lake `MERGE INTO`: Upsert seguro para suportar re-processamento sem duplicar dados.
+# MAGIC 5. Otimizacao Delta (`OPTIMIZE` e `Z-ORDER`): Indexacao multidimensional para acelerar consultas analiticas.
+
+# COMMAND ----------
 from pyspark.sql.functions import (
     col, trim, upper, lpad, concat, to_date, regexp_replace,
     when, current_timestamp, broadcast
@@ -33,10 +33,10 @@ spark.sql(f"USE CATALOG {CATALOG_NAME}")
 
 # COMMAND ----------
 # MAGIC %md
-# MAGIC ## 🏢 1. Transformação: Tabela `silver_empresas`
+# MAGIC ## 1. Transformacao: Tabela `silver_empresas`
 
 # COMMAND ----------
-print("⏳ Processando 'silver_empresas'...")
+print("[INFO] Processando 'silver_empresas'...")
 
 df_bronze_emp = spark.table("bronze.bronze_empresas")
 df_naturezas = spark.table("bronze.bronze_naturezas_juridicas")
@@ -51,16 +51,16 @@ df_silver_emp = (
         "capital_social",
         regexp_replace(col("capital_social_str"), ",", ".").cast(DecimalType(16, 2))
     )
-    # Decodificação do Porte da Empresa
+    # Decodificacao do Porte da Empresa
     .withColumn(
         "descricao_porte",
         when(col("porte_empresa") == "01", "MICRO EMPRESA (ME)")
         .when(col("porte_empresa") == "03", "EMPRESA DE PEQUENO PORTE (EPP)")
         .when(col("porte_empresa") == "05", "DEMAIS")
-        .otherwise("NÃO INFORMADO")
+        .otherwise("NAO INFORMADO")
     )
     .withColumn("ente_federativo_responsavel", trim(col("ente_federativo_responsavel")))
-    # Broadcast Join com Natureza Jurídica (Tabela pequena de lookup)
+    # Broadcast Join com Natureza Juridica (Tabela pequena de lookup)
     .join(
         broadcast(df_naturezas.select(
             col("codigo").alias("nat_cod"),
@@ -73,7 +73,7 @@ df_silver_emp = (
     .withColumn("_updated_at", current_timestamp())
 )
 
-# Escrita Delta na Camada Silver com MERGE INTO (Upsert por CNPJ Básico)
+# Escrita Delta na Camada Silver com MERGE INTO (Upsert por CNPJ Basico)
 target_table_emp = "silver.silver_empresas"
 
 if not spark.catalog.tableExists(target_table_emp):
@@ -83,7 +83,7 @@ if not spark.catalog.tableExists(target_table_emp):
         .mode("overwrite")
         .saveAsTable(target_table_emp)
     )
-    print(f"✅ Tabela '{target_table_emp}' criada inicialmente.")
+    print(f"[INFO] Tabela '{target_table_emp}' criada inicialmente.")
 else:
     delta_target = DeltaTable.forName(spark, target_table_emp)
     (
@@ -93,14 +93,14 @@ else:
         .whenNotMatchedInsertAll()
         .execute()
     )
-    print(f"✅ MERGE executado com sucesso em '{target_table_emp}'.")
+    print(f"[INFO] MERGE executado com sucesso em '{target_table_emp}'.")
 
 # COMMAND ----------
 # MAGIC %md
-# MAGIC ## 📍 2. Transformação: Tabela `silver_estabelecimentos` (Particionamento & Z-Order)
+# MAGIC ## 2. Transformacao: Tabela `silver_estabelecimentos` (Particionamento & Z-Order)
 
 # COMMAND ----------
-print("⏳ Processando 'silver_estabelecimentos'...")
+print("[INFO] Processando 'silver_estabelecimentos'...")
 
 df_bronze_est = spark.table("bronze.bronze_estabelecimentos")
 df_cnae = spark.table("bronze.bronze_cnae")
@@ -108,7 +108,7 @@ df_municipios = spark.table("bronze.bronze_municipios")
 
 df_silver_est = (
     df_bronze_est
-    # Criação do CNPJ Completo Formatado (14 dígitos)
+    # Criacao do CNPJ Completo Formatado (14 digitos)
     .withColumn("cnpj_basico", lpad(trim(col("cnpj_basico")), 8, "0"))
     .withColumn("cnpj_ordem", lpad(trim(col("cnpj_ordem")), 4, "0"))
     .withColumn("cnpj_dv", lpad(trim(col("cnpj_dv")), 2, "0"))
@@ -124,7 +124,7 @@ df_silver_est = (
         .otherwise("OUTRO")
     )
     .withColumn("nome_fantasia", upper(trim(col("nome_fantasia"))))
-    # Decodificação da Situação Cadastral
+    # Decodificacao da Situacao Cadastral
     .withColumn(
         "descricao_situacao_cadastral",
         when(col("situacao_cadastral") == "01", "NULA")
@@ -141,7 +141,7 @@ df_silver_est = (
     .withColumn("cep", lpad(regexp_replace(trim(col("cep")), "[^0-9]", ""), 8, "0"))
     .withColumn("uf", upper(trim(col("uf"))))
     .withColumn("municipio_cod", lpad(trim(col("municipio")), 4, "0"))
-    # Broadcast Joins com CNAE e Município
+    # Broadcast Joins com CNAE e Municipio
     .join(
         broadcast(df_cnae.select(
             col("codigo").alias("cnae_cod"),
@@ -162,7 +162,7 @@ df_silver_est = (
     .withColumn("_updated_at", current_timestamp())
 )
 
-# Gravação com Particionamento por UF para otimizar queries regionais
+# Gravacao com Particionamento por UF para otimizar queries regionais
 target_table_est = "silver.silver_estabelecimentos"
 
 (
@@ -174,22 +174,22 @@ target_table_est = "silver.silver_estabelecimentos"
     .saveAsTable(target_table_est)
 )
 
-print(f"✅ Tabela '{target_table_est}' gravada e particionada por UF.")
+print(f"[INFO] Tabela '{target_table_est}' gravada e particionada por UF.")
 
-# Otimização Delta Lake com Z-ORDER nos campos mais filtrados em queries analíticas
-print("⏳ Executando OPTIMIZE com Z-ORDER...")
+# Otimizacao Delta Lake com Z-ORDER nos campos mais filtrados em queries analiticas
+print("[INFO] Executando OPTIMIZE com Z-ORDER...")
 spark.sql(f"""
     OPTIMIZE {target_table_est}
     ZORDER BY (cnpj_basico, cnae_fiscal_principal, situacao_cadastral)
 """)
-print("✅ Z-ORDER concluído com sucesso!")
+print("[INFO] Z-ORDER concluido com sucesso.")
 
 # COMMAND ----------
 # MAGIC %md
-# MAGIC ## 👥 3. Transformação: Tabela `silver_socios`
+# MAGIC ## 3. Transformacao: Tabela `silver_socios`
 
 # COMMAND ----------
-print("⏳ Processando 'silver_socios'...")
+print("[INFO] Processando 'silver_socios'...")
 
 df_bronze_soc = spark.table("bronze.bronze_socios")
 df_qualif = spark.table("bronze.bronze_qualificacoes_socios")
@@ -199,15 +199,15 @@ df_silver_soc = (
     .withColumn("cnpj_basico", lpad(trim(col("cnpj_basico")), 8, "0"))
     .withColumn(
         "tipo_socio",
-        when(col("identificador_socio") == "1", "PESSOA JURÍDICA")
-        .when(col("identificador_socio") == "2", "PESSOA FÍSICA")
+        when(col("identificador_socio") == "1", "PESSOA JURIDICA")
+        .when(col("identificador_socio") == "2", "PESSOA FISICA")
         .when(col("identificador_socio") == "3", "ESTRANGEIRO")
-        .otherwise("NÃO INFORMADO")
+        .otherwise("NAO INFORMADO")
     )
     .withColumn("nome_socio", upper(trim(col("nome_socio"))))
     .withColumn("data_entrada_sociedade", to_date(col("data_entrada_sociedade"), "yyyyMMdd"))
     .withColumn("qualificacao_socio", lpad(trim(col("qualificacao_socio")), 2, "0"))
-    # Decodificação de Faixa Etária
+    # Decodificacao de Faixa Etaria
     .withColumn(
         "descricao_faixa_etaria",
         when(col("faixa_etaria") == "1", "0 a 12 anos")
@@ -219,9 +219,9 @@ df_silver_soc = (
         .when(col("faixa_etaria") == "7", "61 a 70 anos")
         .when(col("faixa_etaria") == "8", "71 a 80 anos")
         .when(col("faixa_etaria") == "9", "Mais de 80 anos")
-        .otherwise("Não informado")
+        .otherwise("Nao informado")
     )
-    # Broadcast Join com Qualificação
+    # Broadcast Join com Qualificacao
     .join(
         broadcast(df_qualif.select(
             col("codigo").alias("qualif_cod"),
@@ -243,11 +243,11 @@ target_table_soc = "silver.silver_socios"
     .saveAsTable(target_table_soc)
 )
 
-print(f"✅ Tabela '{target_table_soc}' gravada com sucesso.")
+print(f"[INFO] Tabela '{target_table_soc}' gravada com sucesso.")
 
 # COMMAND ----------
 # MAGIC %md
-# MAGIC ## 🔎 4. Validação das Tabelas Silver
+# MAGIC ## 4. Validacao das Tabelas Silver
 
 # COMMAND ----------
 display(spark.sql("""

@@ -1,0 +1,80 @@
+{
+  "name": "CNPJ_Lakehouse_Daily_ETL_Pipeline",
+  "email_notifications": {
+    "no_alert_for_skipped_runs": false
+  },
+  "timeout_seconds": 7200,
+  "max_concurrent_runs": 1,
+  "tasks": [
+    {
+      "task_key": "00_environment_setup",
+      "notebook_task": {
+        "notebook_path": "notebooks/00_environment_setup",
+        "source": "WORKSPACE"
+      },
+      "job_cluster_key": "cnpj_etl_cluster",
+      "description": "Configura o catálogo, schemas e volumes no Unity Catalog."
+    },
+    {
+      "task_key": "01_bronze_ingestion",
+      "depends_on": [
+        {
+          "task_key": "00_environment_setup"
+        }
+      ],
+      "notebook_task": {
+        "notebook_path": "notebooks/01_bronze_ingestion",
+        "source": "WORKSPACE"
+      },
+      "job_cluster_key": "cnpj_etl_cluster",
+      "description": "Ingere arquivos brutos da RFB com schema enforcement e metadados na camada Bronze."
+    },
+    {
+      "task_key": "02_silver_transformations",
+      "depends_on": [
+        {
+          "task_key": "01_bronze_ingestion"
+        }
+      ],
+      "notebook_task": {
+        "notebook_path": "notebooks/02_silver_transformations",
+        "source": "WORKSPACE"
+      },
+      "job_cluster_key": "cnpj_etl_cluster",
+      "description": "Aplica transformações, limpeza, broadcast joins, MERGE INTO e Z-ORDER na camada Silver."
+    },
+    {
+      "task_key": "03_gold_star_schema",
+      "depends_on": [
+        {
+          "task_key": "02_silver_transformations"
+        }
+      ],
+      "notebook_task": {
+        "notebook_path": "notebooks/03_gold_star_schema",
+        "source": "WORKSPACE"
+      },
+      "job_cluster_key": "cnpj_etl_cluster",
+      "description": "Gera o modelo dimensional Star Schema e datamarts agregados na camada Gold."
+    }
+  ],
+  "job_clusters": [
+    {
+      "job_cluster_key": "cnpj_etl_cluster",
+      "new_cluster": {
+        "spark_version": "14.3.x-scala2.12",
+        "spark_conf": {
+          "spark.databricks.delta.optimizeWrite.enabled": "true",
+          "spark.databricks.delta.autoCompact.enabled": "true",
+          "spark.sql.adaptive.enabled": "true",
+          "spark.sql.adaptive.skewJoin.enabled": "true"
+        },
+        "node_type_id": "i3.xlarge",
+        "autoscale": {
+          "min_workers": 2,
+          "max_workers": 8
+        }
+      }
+    }
+  ]
+}

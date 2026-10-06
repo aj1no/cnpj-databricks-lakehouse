@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+env/
+venv/
+
+# Databricks & Spark
+.databricks/
+checkpoint/
+*.checkpoint/
+metastore_db/
+derby.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Big Data local outputs
+*.parquet
+*.delta
+sample_data/raw_files/**/*.csv
+!sample_data/raw_files/cnaes/cnaes.csv

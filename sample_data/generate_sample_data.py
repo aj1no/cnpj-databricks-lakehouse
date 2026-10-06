@@ -2,7 +2,7 @@
 ================================================================================
 GENERATE_SAMPLE_DATA.PY
 Projeto: CNPJ Data Lakehouse (Receita Federal do Brasil)
-Objetivo: Gerador de dados sintéticos estruturados no padrão exato dos arquivos da Receita Federal (RFB).
+Objetivo: Gerador de dados sinteticos estruturados no padrao exato dos arquivos da Receita Federal (RFB).
 Permite testar o pipeline completo localmente ou no Databricks Community Edition.
 ================================================================================
 """
@@ -13,7 +13,7 @@ import csv
 import random
 from datetime import datetime, timedelta
 
-# Garantir compatibilidade de saída UTF-8 no Windows
+# Garantir compatibilidade de saida UTF-8 no Windows
 if sys.platform == "win32":
     sys.stdout.reconfigure(encoding="utf-8")
 
@@ -27,22 +27,22 @@ def ensure_dirs():
 def generate_cnaes():
     cnaes = [
         ("6201501", "Desenvolvimento de programas de computador sob encomenda"),
-        ("6202300", "Desenvolvimento e licenciamento de programas de computador customizáveis"),
-        ("6204000", "Consultoria em tecnologia da informação"),
-        ("4711302", "Comércio varejista de mercadorias em geral com predominância de produtos alimentícios"),
-        ("4751201", "Comércio varejista especializado de equipamentos e suprimentos de informática"),
+        ("6202300", "Desenvolvimento e licenciamento de programas de computador customizaveis"),
+        ("6204000", "Consultoria em tecnologia da informacao"),
+        ("4711302", "Comercio varejista de mercadorias em geral com predominancia de produtos alimenticios"),
+        ("4751201", "Comercio varejista especializado de equipamentos e suprimentos de informatica"),
         ("5611201", "Restaurantes e similares"),
         ("6920601", "Atividades de contabilidade"),
-        ("7020400", "Atividades de consultoria em gestão empresarial"),
-        ("8630503", "Atividade médica ambulatorial restrita a consultas"),
-        ("4120400", "Construção de edifícios")
+        ("7020400", "Atividades de consultoria em gestao empresarial"),
+        ("8630503", "Atividade medica ambulatorial restrita a consultas"),
+        ("4120400", "Construcao de edificios")
     ]
     filepath = os.path.join(SAMPLE_DIR, "cnaes", "cnaes.csv")
     with open(filepath, "w", encoding="ISO-8859-1", newline="") as f:
         writer = csv.writer(f, delimiter=";", quotechar='"')
         for cod, desc in cnaes:
             writer.writerow([cod, desc])
-    print(f"✅ Gerado: {filepath}")
+    print(f"[INFO] Gerado: {filepath}")
 
 def generate_municipios():
     municipios = [
@@ -62,7 +62,7 @@ def generate_municipios():
         writer = csv.writer(f, delimiter=";", quotechar='"')
         for cod, desc in municipios:
             writer.writerow([cod, desc])
-    print(f"✅ Gerado: {filepath}")
+    print(f"[INFO] Gerado: {filepath}")
 
 def generate_naturezas():
     naturezas = [
@@ -77,22 +77,22 @@ def generate_naturezas():
         writer = csv.writer(f, delimiter=";", quotechar='"')
         for cod, desc in naturezas:
             writer.writerow([cod, desc])
-    print(f"✅ Gerado: {filepath}")
+    print(f"[INFO] Gerado: {filepath}")
 
 def generate_qualificacoes():
     qualificacoes = [
-        ("49", "Sócio-Administrador"),
-        ("22", "Sócio"),
+        ("49", "Socio-Administrador"),
+        ("22", "Socio"),
         ("10", "Diretor"),
         ("05", "Administrador"),
-        ("65", "Titular Pessoa Física Residente ou Domiciliado no Brasil")
+        ("65", "Titular Pessoa Fisica Residente ou Domiciliado no Brasil")
     ]
     filepath = os.path.join(SAMPLE_DIR, "qualificacoes", "qualificacoes.csv")
     with open(filepath, "w", encoding="ISO-8859-1", newline="") as f:
         writer = csv.writer(f, delimiter=";", quotechar='"')
         for cod, desc in qualificacoes:
             writer.writerow([cod, desc])
-    print(f"✅ Gerado: {filepath}")
+    print(f"[INFO] Gerado: {filepath}")
 
 def generate_companies_and_establishments(n=1000):
     ufs = [("SP", "7107"), ("RJ", "6001"), ("MG", "4123"), ("RS", "5847"), ("PR", "7535"), ("DF", "9701"), ("BA", "3849"), ("PE", "1389"), ("CE", "2587"), ("AM", "0255")]
@@ -135,7 +135,7 @@ def generate_companies_and_establishments(n=1000):
             uf, mun_cod, "11", "987654321", "", "", "", "", "contato@empresa.com.br", "", ""
         ])
         
-        # Gerar Sócios (1 a 3 sócios por empresa)
+        # Gerar Socios (1 a 3 socios por empresa)
         for s_idx in range(random.randint(1, 3)):
             soc_name = f"{random.choice(first_names)} {random.choice(first_names)} {random.choice(first_names)}"
             soc_rows.append([
@@ -151,7 +151,7 @@ def generate_companies_and_establishments(n=1000):
     with open(os.path.join(SAMPLE_DIR, "socios", "socios.csv"), "w", encoding="ISO-8859-1", newline="") as f:
         csv.writer(f, delimiter=";", quotechar='"').writerows(soc_rows)
 
-    print(f"✅ Gerados {len(emp_rows)} empresas, {len(est_rows)} estabelecimentos e {len(soc_rows)} sócios.")
+    print(f"[INFO] Gerados {len(emp_rows)} empresas, {len(est_rows)} estabelecimentos e {len(soc_rows)} socios.")
 
 if __name__ == "__main__":
     ensure_dirs()
@@ -160,4 +160,4 @@ if __name__ == "__main__":
     generate_naturezas()
     generate_qualificacoes()
     generate_companies_and_establishments(2000)
-    print("\n🎉 Amostra de dados sintéticos da Receita Federal criada com sucesso!")
+    print("[INFO] Amostra de dados sinteticos da Receita Federal criada com sucesso.")

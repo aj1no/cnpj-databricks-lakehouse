@@ -3,27 +3,27 @@
 01_BRONZE_INGESTION.PY
 Projeto: CNPJ Data Lakehouse (Receita Federal do Brasil)
 Plataforma: Databricks / PySpark / Delta Lake
-Objetivo: Ingestão de dados brutos (CSV/ISO-8859-1) para tabelas Delta na camada Bronze com Schema Enforcement e Metadados.
+Objetivo: Ingestao de dados brutos (CSV/ISO-8859-1) para tabelas Delta na camada Bronze com Schema Enforcement e Metadados.
 ================================================================================
 """
 
 # Databricks Notebook Source
 # COMMAND ----------
 # MAGIC %md
-# MAGIC # 🥉 01 - Ingestão Camada Bronze (Raw -> Delta Lake)
+# MAGIC # 01 - Ingestao Camada Bronze (Raw -> Delta Lake)
 # MAGIC 
 # MAGIC ### Objetivos:
-# MAGIC 1. Ingerir os arquivos públicos da Receita Federal (formato delimitado por ponto-e-vírgula `;`, sem cabeçalho, encoding `ISO-8859-1`).
-# MAGIC 2. Aplicar **Schema Enforcement** explícito para evitar inferências lentas e erros em Big Data (50M+ linhas).
-# MAGIC 3. Adicionar **metadados de auditoria** (`_ingest_timestamp`, `_source_file`).
-# MAGIC 4. Salvar como tabelas **Delta Lake** na camada `cnpj_lakehouse.bronze`.
+# MAGIC 1. Ingerir os arquivos publicos da Receita Federal (formato delimitado por ponto-e-virgula `;`, sem cabecalho, encoding `ISO-8859-1`).
+# MAGIC 2. Aplicar Schema Enforcement explicito para evitar inferencias lentas e erros em Big Data (50M+ linhas).
+# MAGIC 3. Adicionar metadados de auditoria (`_ingest_timestamp`, `_source_file`).
+# MAGIC 4. Salvar como tabelas Delta Lake na camada `cnpj_lakehouse.bronze`.
 
 # COMMAND ----------
 from pyspark.sql.types import StructType, StructField, StringType, IntegerType
 from pyspark.sql.functions import current_timestamp, input_file_name, col
 
 # COMMAND ----------
-# 1. Configurações de Caminho
+# 1. Configuracoes de Caminho
 CATALOG_NAME = "cnpj_lakehouse"
 VOLUME_PATH = f"/Volumes/{CATALOG_NAME}/bronze/raw_landing"
 BRONZE_SCHEMA = f"{CATALOG_NAME}.bronze"
@@ -33,7 +33,7 @@ spark.sql(f"USE SCHEMA bronze")
 
 # COMMAND ----------
 # MAGIC %md
-# MAGIC ## 📋 2. Definição Explícita de Schemas (Padrão Receita Federal)
+# MAGIC ## 2. Definicao Explicita de Schemas (Padrao Receita Federal)
 
 # COMMAND ----------
 # Schema: EMPRESAS (~50M+ registros)
@@ -81,7 +81,7 @@ schema_estabelecimentos = StructType([
     StructField("data_situacao_especial", StringType(), True)
 ])
 
-# Schema: SÓCIOS (~25M+ registros)
+# Schema: SOCIOS (~25M+ registros)
 schema_socios = StructType([
     StructField("cnpj_basico", StringType(), False),
     StructField("identificador_socio", StringType(), True),
@@ -96,7 +96,7 @@ schema_socios = StructType([
     StructField("faixa_etaria", StringType(), True)
 ])
 
-# Schema: Tabelas de Domínio / Lookup (CNAEs, Municípios, Naturezas Jurídicas, etc.)
+# Schema: Tabelas de Dominio / Lookup (CNAEs, Municipios, Naturezas Juridicas, etc.)
 schema_lookup = StructType([
     StructField("codigo", StringType(), False),
     StructField("descricao", StringType(), True)
@@ -104,15 +104,15 @@ schema_lookup = StructType([
 
 # COMMAND ----------
 # MAGIC %md
-# MAGIC ## 🔄 3. Função Genérica de Ingestão para Delta Bronze
+# MAGIC ## 3. Funcao Generica de Ingestao para Delta Bronze
 
 # COMMAND ----------
 def ingest_raw_to_bronze(file_pattern: str, schema: StructType, table_name: str, delimiter: str = ";", encoding: str = "ISO-8859-1"):
     """
-    Lê arquivos delimitados brutos, adiciona metadados de auditoria e grava como Delta Table.
+    Le arquivos delimitados brutos, adiciona metadados de auditoria e grava como Delta Table.
     """
     input_path = f"{VOLUME_PATH}/{file_pattern}"
-    print(f"⏳ Iniciando ingestão de '{file_pattern}' para '{BRONZE_SCHEMA}.{table_name}'...")
+    print(f"[INFO] Iniciando ingestao de '{file_pattern}' para '{BRONZE_SCHEMA}.{table_name}'...")
     
     df_raw = (
         spark.read
@@ -143,15 +143,13 @@ def ingest_raw_to_bronze(file_pattern: str, schema: StructType, table_name: str,
     )
     
     count = spark.table(f"{BRONZE_SCHEMA}.{table_name}").count()
-    print(f"✅ Tabela '{BRONZE_SCHEMA}.{table_name}' gravada com sucesso! Total de registros: {count:,}")
+    print(f"[INFO] Tabela '{BRONZE_SCHEMA}.{table_name}' gravada com sucesso. Total de registros: {count:,}")
 
 # COMMAND ----------
 # MAGIC %md
-# MAGIC ## 🚀 4. Execução da Ingestão
+# MAGIC ## 4. Execucao da Ingestao
 
 # COMMAND ----------
-# Ingestão das Tabelas Principais
-# Observação: em produção, substitua os padrões pelos arquivos correspondentes (ex: *EMPRECSV*, *ESTABELE*, *SOCIOCSV*)
 datasets_to_ingest = [
     ("empresas/*.csv", schema_empresas, "bronze_empresas"),
     ("estabelecimentos/*.csv", schema_estabelecimentos, "bronze_estabelecimentos"),
@@ -167,11 +165,11 @@ for file_pattern, schema, table_name in datasets_to_ingest:
     try:
         ingest_raw_to_bronze(file_pattern, schema, table_name)
     except Exception as e:
-        print(f"⚠️ Aviso: Arquivo '{file_pattern}' não encontrado ou erro na ingestão: {str(e)}")
+        print(f"[WARN] Arquivo '{file_pattern}' nao encontrado ou erro na ingestao: {str(e)}")
 
 # COMMAND ----------
 # MAGIC %md
-# MAGIC ## 🔎 5. Verificação da Camada Bronze
+# MAGIC ## 5. Verificacao da Camada Bronze
 
 # COMMAND ----------
 display(spark.sql("SHOW TABLES IN cnpj_lakehouse.bronze"))
